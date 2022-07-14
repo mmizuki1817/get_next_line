@@ -3,23 +3,24 @@
 /*                                                        :::      ::::::::   */
 /*   get_next_line.c                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mimatsub <mimatsub@student.42.fr>          +#+  +:+       +#+        */
+/*   By: mimatsub <mimatsub@student.42dTokyo.jp>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/07/01 12:12:01 by mimatsub          #+#    #+#             */
-/*   Updated: 2022/07/13 01:48:53 by mimatsub         ###   ########.fr       */
+/*   Updated: 2022/07/14 20:16:09 by mimatsub         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "get_next_line.h"
 
-#define BUFFER_SIZE 20
+#define BUFFER_SIZE 10
 
-char *get_next_line(int fd)
+static char *get_next_line(int fd)
 {
     char *buf;
     char *line;
     static char *save;
     size_t n;
+    ssize_t read_byte;
 
     if (fd < 1 || BUFFER_SIZE < 1)
         return (NULL);
@@ -27,6 +28,7 @@ char *get_next_line(int fd)
     // 前回分のsaveが残ってる
     if (save)
     {
+        //printf("test;%s\n", save);
         // \nまでか\0までをlineに移す
         // \nがあるかを調べる
         n = ft_strlen_n(save);
@@ -48,20 +50,23 @@ char *get_next_line(int fd)
     buf = (char *)malloc(sizeof(char) * BUFFER_SIZE);
     if (!buf)
         return (NULL);
-    ssize_t read_byte = read(fd, buf, BUFFER_SIZE);
-
+    //ssize_t
+    read_byte = read(fd, buf, BUFFER_SIZE);
+    if (read_byte == -1)
+        return (NULL);
     // /nがあるか探す(0 or not) && /nまでの文字数カウント
     n = ft_strlen_n(buf);
+    
     // \nがある
     if (n > 0)
     {
         // すでにlineに値が入っている
-        if (*line)
+        if (line)
         {
             // lineに/nまでをくっつける
             line = ft_strjoin(line, buf);
         }
-        // lineには値が入っていない
+        //lineには値が入っていない
         else
         {
             // lineに/nまでを入れる
@@ -70,28 +75,55 @@ char *get_next_line(int fd)
 
         // saveに/n以降を入れる
         save = ft_strdup(buf+n); // if ちょうど終わってた時は？
+        //printf("test2%s\n", save);
         free(buf);
+        // printf("test");
         return(line); //free(line)のタイミングは？
     }
     // \nがない
     if (n == 0)
     {
-        // \nが来るまでreadしてbufに入れてlineにつなげてを繰り返す？
-        buf = (char *)malloc(sizeof(char) * BUFFER_SIZE);
-        if (!buf)
-            return (NULL);
-        ssize_t read_byte = read(fd, buf, BUFFER_SIZE);
-    }
 
-    // if (n == -1)
-    //    return (NULL)
+        //get_next_line(fd);
+        while (n == 0)
+        {
+            if (buf)
+            {
+                if (!line)
+                    line = ft_strdup(buf);
+                else
+                    line = ft_strjoin(line, buf);
+            }
+            free(buf);
+            // \nが来るまでreadしてbufに入れてlineにつなげてを繰り返す？
+            buf = (char *)malloc(sizeof(char) * BUFFER_SIZE);
+            if (!buf)
+                return (NULL);
+            read_byte = read(fd, buf, BUFFER_SIZE);
+            n = ft_strlen_n(buf);
+            // line絶対あるはず？
+            if (line)
+            {
+                line = ft_strjoin(line, buf);
+            }
+            else
+            {
+                line = ft_strdup_len(buf, n);
+            }
+            save = ft_strdup(buf+n);
+            free(buf);
+            return (line);
+        }
+    }
+    
+    return (NULL);
 }
 
 int	main(void)
 {
 	int		fd;
 	char	*line;
-    int n=3;
+    int n=5;
 
 	line = "";
 	fd = open("text.txt", O_RDONLY);
@@ -99,13 +131,13 @@ int	main(void)
 	while (n--)
     {
         line = get_next_line(fd);
-		printf("> %s", line);
+        printf("> %s", line);
 		free(line);
 	}
     
 	return (0);
 }
-
+// INT_MAX越える時に注意
 
 /*
 gnl:
